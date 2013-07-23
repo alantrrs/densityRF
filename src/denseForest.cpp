@@ -37,8 +37,9 @@ void readImages(FileNode training_files,vector<Mat>& imgs, vector<Mat>& gts){
     string img_file, gt_file;
     (*it)["img"] >> img_file;
     (*it)["gt"] >> gt_file;
-    Mat img, gt, label_img;
+    Mat img, gt, lab_img;
     img = imread(img_file);
+    cvtColor(img,lab_img,CV_BGR2Lab);
     gt = imread(gt_file);
     imgs.push_back(img);
     gts.push_back(gt);
@@ -55,7 +56,7 @@ int main(int argc, char** argv){
   parameters.MaxDecisionLevels = 10;
   parameters.NumberOfCandidateFeatures = 50;
   parameters.NumberOfCandidateThresholdsPerFeature = 25;
-  parameters.NumberOfTrees = 10;
+  parameters.NumberOfTrees = 1;
   parameters.Verbose = 1; 
   //Get Training data
   cout << "Reading data.." << endl;
@@ -77,11 +78,11 @@ int main(int argc, char** argv){
   int margin = 20;
   ImageCollection trainingData;
   trainingData.SetData(imgs,gts,(int)labels.size(),margin);
-  trainingData.show();
+  //trainingData.show();
   cout << "Training samples: " << trainingData.Count() << endl;
   //Train Forest
   Random random;
-  ClassificationContext<PixelCompFeature> context(trainingData.CountClasses(),margin);
+  ClassificationContext<PixelCompFeature> context(trainingData);
   std::auto_ptr<Forest<PixelCompFeature,HistogramAggregator> > forest = ForestTrainer<PixelCompFeature,HistogramAggregator>::TrainForest(random,parameters,context,trainingData);
   //Load test data
   FileStorage tfs("test.yml",FileStorage::READ);

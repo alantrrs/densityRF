@@ -12,6 +12,7 @@ class ImageCollection : public IDataPointCollection {
   std::vector<DataPoint> positions_;
   std::vector<cv::Mat> data_;
   std::vector<cv::Mat> labels_;
+  int margin_;
   int nclasses_;
   public:
   void SetData(const std::vector<cv::Mat>& imgs, const std::vector<cv::Mat>& gt, int nclasses,int margin,int step=2);
@@ -20,6 +21,7 @@ class ImageCollection : public IDataPointCollection {
   int CountClasses() const;
   DataPoint getDataPoint(int i) const;
   int getLabel(int i) const;
+  int getMargin() const { return margin_;}
   void release();
 friend class PixelCompFeature;
 };
@@ -58,12 +60,15 @@ class PixelCompGenerator : public FeatureGenerator<PixelCompFeature>{
 };
 
 class HistogramAggregator{
+    std::vector<float> weights_;
     std::vector<unsigned int> bins_;
     unsigned int sampleCount_;
   public:
     double Entropy() const;
+    double weightedEntropy() const;
     HistogramAggregator();
     HistogramAggregator(int nClasses);
+    HistogramAggregator(const std::vector<float>& weights);
     float GetProbability(int classIndex) const;
     int BinCount(){ return bins_.size();}
     unsigned int SampleCount() const { return sampleCount_; }
@@ -78,14 +83,19 @@ class HistogramAggregator{
 template<class F>
 class ClassificationContext : public ITrainingContext<F,HistogramAggregator> {
   private:
-    int nClasses_;
     int maxOffset_;
+    std::vector<float> weights_;
   public:
-    ClassificationContext(int nClasses, int maxOffset) {
-      nClasses_ = nClasses;
-      maxOffset_ = maxOffset;
+    ClassificationContext(const ImageCollection& trainingData) {
+      maxOffset_ = trainingData.getMargin();
+      weights_ = std::vector<float>(trainingData.CountClasses(),0.0);
+      for (int i=0;i<trainingData.Count();i++){
+        weights_[trainingData.getLabel(i)]+=1;
+      }
+      for (int c=0;c<weights_.size();c++){
+        weights_[c]=(float)trainingData.Count()/weights_[c];
+      }
     }
-  private:
     // Implementation of ITrainingContext
     F GetRandomFeature(Random& random){
     cv::Point p1(random.Next(0,maxOffset_),random.Next(0,maxOffset_));
@@ -96,15 +106,15 @@ class ClassificationContext : public ITrainingContext<F,HistogramAggregator> {
    }
 
     HistogramAggregator GetStatisticsAggregator(){
-      return HistogramAggregator(nClasses_);
+      return HistogramAggregator(weights_);
     }
     double ComputeInformationGain(const HistogramAggregator& allStatistics, const HistogramAggregator& leftStatistics, const HistogramAggregator& rightStatistics){
-      double entropyBefore = allStatistics.Entropy();
+      double entropyBefore = allStatistics.weightedEntropy();
       unsigned int nTotalSamples = leftStatistics.SampleCount() + rightStatistics.SampleCount();
       if (nTotalSamples <= 1)
         return 0.0;
-      double le = leftStatistics.Entropy();
-      double re = rightStatistics.Entropy();
+      double le = leftStatistics.weightedEntropy();
+      double re = rightStatistics.weightedEntropy();
       double entropyAfter = (leftStatistics.SampleCount() * le + rightStatistics.SampleCount() * re) / nTotalSamples;
      return entropyBefore - entropyAfter;
     }

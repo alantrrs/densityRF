@@ -5,13 +5,14 @@ using namespace cv;
 
 // TRAINING DATA
 void ImageCollection::SetData(const std::vector<cv::Mat>& imgs, const std::vector<cv::Mat>& gt, int nclasses,int margin,int step){
+  margin_ =margin;
   data_ = imgs;
   labels_ = gt;
   nclasses_ = nclasses;
   // Get samples
   for (int i=0;i<data_.size();i++){
-    for ( int y=margin+1; y< (data_[i].rows-margin-1); y+=step ){
-      for ( int x=margin+1; x<(data_[i].cols-margin-1); x+=step ){ 
+    for ( int y=margin_+1; y< (data_[i].rows-margin_-1); y+=step ){
+      for ( int x=margin_+1; x<(data_[i].cols-margin_-1); x+=step ){ 
         DataPoint p;
         p.pt = Point(x,y);
         p.i = i;
@@ -69,12 +70,36 @@ double HistogramAggregator::Entropy() const {
   return result;
 }
 
+double HistogramAggregator::weightedEntropy() const {
+  if (sampleCount_ == 0)
+    return 0.0;
+  double result = 0.0;
+  vector<float> normalizer(bins_.size());
+  float Z =0.0;
+  for (int b = 0; b < bins_.size(); b++){
+    normalizer[b]=weights_[b]*bins_[b];
+    Z+=normalizer[b];
+  }
+  for (int b = 0; b < bins_.size(); b++){
+    float p = Z == 0.0 ? 0.0 : normalizer[b]/Z;
+    result -= p == 0.0 ? 0.0 : p*log(p)/log(2.0);
+  }
+  return result;
+}
+
 HistogramAggregator::HistogramAggregator(){
   sampleCount_ = 0;
 }
 
 HistogramAggregator::HistogramAggregator(int nClasses){
-  bins_ = vector<unsigned int>(nClasses,0);
+  weights_ = vector<float>(nClasses,1.0);
+  bins_ = vector<unsigned int>(weights_.size(),0);
+  sampleCount_ = 0;
+}
+
+HistogramAggregator::HistogramAggregator(const vector<float>& weights){
+  weights_ = weights;
+  bins_ = vector<unsigned int>(weights_.size(),0);
   sampleCount_ = 0;
 }
 
@@ -83,7 +108,7 @@ float HistogramAggregator::GetProbability(int classIndex) const{
 }
 
 int HistogramAggregator::FindTallestBinIndex() const{
-  unsigned int maxCount = bins_[0];
+  float maxCount = bins_[0];
   int tallestBinIndex = 0;
   for (int i = 1; i < bins_.size(); i++){
     if (bins_[i] > maxCount){
@@ -117,7 +142,7 @@ void HistogramAggregator::Aggregate(const HistogramAggregator& aggregator){
 }
 
 HistogramAggregator HistogramAggregator::DeepClone() const{
-  HistogramAggregator result(bins_.size());
+  HistogramAggregator result(weights_);
   for (int b = 0; b < bins_.size(); b++){
     result.bins_[b] = bins_[b];
   }
