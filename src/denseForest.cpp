@@ -99,40 +99,40 @@ int main(int argc, char** argv){
   }
   int nClasses = forest->GetTree(0).GetNode(0).TrainingDataStatistics.BinCount();
   testData.SetData(imgs,gts,nClasses,margin,1);
-  //Test Forest
+  // Test Forest
   std::vector<std::vector<int> > leafIndicesPerTree;
   forest->Apply(testData, leafIndicesPerTree);
-  std::vector<HistogramAggregator> posteriors(testData.Count());
-  for (int i = 0; i < testData.Count(); i++){
-    // Aggregate statistics for this sample over all leaf nodes reached
-    posteriors[i] = HistogramAggregator(nClasses);
-    for (int t = 0; t < forest->TreeCount(); t++){
-      int leafIndex = leafIndicesPerTree[t][i];
-      posteriors[i].Aggregate(forest->GetTree(t).GetNode(leafIndex).TrainingDataStatistics);
-    }
-  }
-  //Save color images & evaluate;
+  HistogramAggregator posteriors;
+  // Initialize images;
   vector<Mat> out_imgs(imgs.size());
   for (int i = 0; i<imgs.size();i++){
    out_imgs[i]=Mat(imgs[i].rows,imgs[i].cols,CV_8UC3);
   }
   vector<int> total_samples(nClasses,0);
   vector<int> correct_samples(nClasses,0);
-  for (int i=0; i< posteriors.size();i++){
-     int c =  posteriors[i].FindTallestBinIndex();
-     //Evaluate accuracy
-     int gt_label = testData.getLabel(i);
-     total_samples[gt_label]+=1;
-     if (c == gt_label)
-       correct_samples[gt_label]+=1;
-     //Change to color
-     Vec3b color(colors[c][2],colors[c][1],colors[c][0]);
-     DataPoint p = testData.getDataPoint(i); 
-     out_imgs[p.i].at<Vec3b>(p.pt) =color;
+  for (int i = 0; i < testData.Count(); i++){
+    // Get Random Forest posteriors
+    posteriors = HistogramAggregator(nClasses);
+    for (int t = 0; t < forest->TreeCount(); t++){
+      int leafIndex = leafIndicesPerTree[t][i];
+      posteriors.Aggregate(forest->GetTree(t).GetNode(leafIndex).TrainingDataStatistics);
+    }
+    int c =  posteriors.FindTallestBinIndex();
+    //Evaluate accuracy
+    int gt_label = testData.getLabel(i);
+    total_samples[gt_label]+=1;
+    if (c == gt_label)
+      correct_samples[gt_label]+=1;
+    //Change to color
+    Vec3b color(colors[c][2],colors[c][1],colors[c][0]);
+    DataPoint p = testData.getDataPoint(i); 
+    out_imgs[p.i].at<Vec3b>(p.pt) =color;
   }
+  // Evaluate
   for (int c=0; c<total_samples.size();c++){
     printf("Class: %d Samples %d Accuracy %f%%\n",c,total_samples[c],(total_samples[c]>0)? 100.0*correct_samples[c]/(float)total_samples[c] : 0); 
   }
+  //Save images
   for (int i=0;i<out_imgs.size();i++){
     stringstream ss;
     ss << "img_" << i << ".bmp"; 
