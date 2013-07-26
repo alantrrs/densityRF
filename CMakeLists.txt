@@ -19,7 +19,7 @@ set(SHERWOOD_INCLUDE_DIRS ${PROJECT_SOURCE_DIR}/include/sherwood)
 #set the include directories
 include_directories (${SHERWOOD_INCLUDE_DIRS} ${PROJECT_SOURCE_DIR}/include	${OpenCV_INCLUDE_DIRS})
 #libraries
-add_library(rf src/VisualContext.cpp)
+add_library(rf src/Data.cpp src/StatisticalAggregators.cpp)
 #executables
 add_executable(densityForest src/denseForest.cpp)
 #link the libraries
