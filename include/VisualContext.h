@@ -44,21 +44,6 @@ class PixelCompFeature {
   } 
 };
 
-template<class F>
-class FeatureGenerator{
-  public:
-  virtual F createRandom(Random& rand,int maxOffset)=0;
-};
-class PixelCompGenerator : public FeatureGenerator<PixelCompFeature>{
-  public:
-  PixelCompFeature createRandom(Random& random,int maxOffset){
-    cv::Point p1(random.Next(0,maxOffset),random.Next(0,maxOffset));
-    cv::Point p2(random.Next(0,maxOffset),random.Next(0,maxOffset));
-    int channel = random.Next(0,3);
-    return PixelCompFeature(p1,p2,channel);
-  }
-};
-
 class HistogramAggregator{
     std::vector<float> weights_;
     std::vector<unsigned int> bins_;
@@ -98,12 +83,11 @@ class ClassificationContext : public ITrainingContext<F,HistogramAggregator> {
     }
     // Implementation of ITrainingContext
     F GetRandomFeature(Random& random){
-    cv::Point p1(random.Next(0,maxOffset_),random.Next(0,maxOffset_));
-    cv::Point p2(random.Next(0,maxOffset_),random.Next(0,maxOffset_));
-    int channel = random.Next(0,3);
-    return PixelCompFeature(p1,p2,channel);
- 
-   }
+      cv::Point p1(random.Next(-maxOffset_,maxOffset_),random.Next(-maxOffset_,maxOffset_));
+      cv::Point p2(random.Next(-maxOffset_,maxOffset_),random.Next(-maxOffset_,maxOffset_));
+      int channel = random.Next(0,3);
+      return PixelCompFeature(p1,p2,channel);
+    }
 
     HistogramAggregator GetStatisticsAggregator(){
       return HistogramAggregator(weights_);
