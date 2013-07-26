@@ -12,7 +12,7 @@ string vec2str(T color){
 Mat colorToLabel(const map<string,int>& labels, const cv::Mat& img){
   Mat tmp;
   cvtColor(img,tmp,CV_BGR2RGB);
-  Mat label_img(img.rows,img.cols,CV_8U);
+  Mat label_img= Mat::zeros(img.rows,img.cols,CV_8U);
   for (int j = 0; j<img.rows;j++){
     for (int i = 0; i<img.cols;i++){
       label_img.at<uchar>(j,i) = (uchar)labels.find(vec2str<Vec3b>(tmp.at<Vec3b>(j,i)))->second; 
@@ -41,7 +41,7 @@ void readImages(FileNode training_files,vector<Mat>& imgs, vector<Mat>& gts){
     img = imread(img_file);
     cvtColor(img,lab_img,CV_BGR2Lab);
     gt = imread(gt_file);
-    imgs.push_back(img);
+    imgs.push_back(lab_img);
     gts.push_back(gt);
   }
 }
@@ -106,7 +106,7 @@ int main(int argc, char** argv){
   // Initialize images;
   vector<Mat> out_imgs(imgs.size());
   for (int i = 0; i<imgs.size();i++){
-   out_imgs[i]=Mat(imgs[i].rows,imgs[i].cols,CV_8UC3);
+   out_imgs[i]=Mat::zeros(imgs[i].rows,imgs[i].cols,CV_8UC3);
   }
   vector<int> total_samples(nClasses,0);
   vector<int> correct_samples(nClasses,0);
